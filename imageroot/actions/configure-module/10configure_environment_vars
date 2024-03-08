@@ -13,6 +13,12 @@ import agent
 # If parsing fails, output everything to stderr
 data = json.load(sys.stdin)
 
+# 2fauth webauthn settings
+host = data.get("host", "")
+APP_URL = "https://"+host
+agent.set_env("APP_URL", APP_URL)
+
+
 #This is specific to you module, so you need to change it accordingly.
 # we read a json stdin {"vars1":true, "var2":"foo", "vars3": 3} and we writ it to .config/state/environment
 # Upper case to set environment variable and minor case to read from stdin

@@ -1,0 +1,49 @@
+#
+# Copyright (C) 2022 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+[Unit]
+Description=Podman  2fauth-app.service
+BindsTo=2fauth.service
+After=2fauth.service
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+EnvironmentFile=%S/state/environment
+EnvironmentFile=-%S/state/smarthost.env
+WorkingDirectory=%S/state
+Restart=always
+TimeoutStopSec=70
+ExecStartPre=/bin/mkdir -p config
+ExecStartPre=/bin/rm -f %t/2fauth-app.pid %t/2fauth-app.ctr-id
+ExecStartPre=-runagent discover-smarthost
+ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
+    --cidfile %t/2fauth-app.ctr-id --cgroups=no-conmon \
+    --pod-id-file %t/2fauth.pod-id --replace -d --name  2fauth-app \
+    --volume 2fauth-app:/var/www/html/:Z \
+    --volume ./config:/tmp:Z \
+    --env=2FAUTH_* \
+    --env APP_NAME=2FAuth \
+    --env ASSET_URL=${APP_URL} \
+    --env APP_NAME=2FAuth \
+    --env WEBAUTHN_NAME=2FAuth \
+    --env WEBAUTHN_USER_VERIFICATION=preferred \
+    --env SITE_OWNER=mail@example.com \
+    --env MAIL_DRIVER=SMTP \
+    --env MAIL_HOST=smtp.example.com \
+    --env MAIL_PORT=587 # STARTTLS \
+    --env MAIL_USERNAME=2fauth@example.com \
+    --env MAIL_PASSWORD=password1234 \
+    --env MAIL_FROM_NAME=2FAuth \
+    --env MAIL_FROM_ADDRESS=2fauth@example.com \
+    ${NGINX_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/2fauth-app.ctr-id -t 10
+ExecReload=/usr/bin/podman kill -s HUP 2fauth-app
+SyslogIdentifier=%u
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/2fauth-app.ctr-id
+PIDFile=%t/2fauth-app.pid
+Type=forking
+
+[Install]
+WantedBy=default.target
