@@ -22,7 +22,7 @@ ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
     --cidfile %t/2fauth-app.ctr-id --cgroups=no-conmon \
     --pod-id-file %t/2fauth.pod-id --replace -d --name  2fauth-app \
     --volume 2fauth-app:/var/www/html/:Z \
-    --volume ./config:/tmp:Z \
+    --volume 2fauth-config:/tmp:Z \
     --env=2FAUTH_* \
     --env APP_NAME=2FAuth \
     --env ASSET_URL=${APP_URL} \
