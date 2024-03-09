@@ -37,7 +37,7 @@ ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
     --env MAIL_PASSWORD=password1234 \
     --env MAIL_FROM_NAME=2FAuth \
     --env MAIL_FROM_ADDRESS=2fauth@example.com \
-    ${APP_IMAGE}
+    ${AUTH_IMAGE}
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/2fauth-app.ctr-id -t 10
 ExecReload=/usr/bin/podman kill -s HUP 2fauth-app
 SyslogIdentifier=%u
