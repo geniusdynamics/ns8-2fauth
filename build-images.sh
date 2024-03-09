@@ -15,7 +15,6 @@ repobase="${REPOBASE:-ghcr.io/geniusdynamics}"
 # Configure the image name
 reponame="2fauth"
 app_version="5.0.4"
-app="2fauth"
 # Create a new empty container image
 container=$(buildah from scratch)
 
@@ -46,7 +45,7 @@ buildah config --entrypoint=/ \
     --label="org.nethserver.authorizations=traefik@node:routeadm" \
     --label="org.nethserver.tcp-ports-demand=1" \
     --label="org.nethserver.rootfull=0" \
-    --label="org.nethserver.images=docker.io/2fauth/${app}:${app_version}" \
+    --label="org.nethserver.images=docker.io/2fauth/2fauth:${app_version}" \
     "${container}"
 # Commit the image
 buildah commit "${container}" "${repobase}/${reponame}"
