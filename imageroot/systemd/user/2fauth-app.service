@@ -24,6 +24,7 @@ ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
     --volume 2fauth-app:/var/www/html/:Z \
     --volume 2fauth-config:/tmp:Z \
     --env=FAUTH_* \
+    --env-file=%/state/key.env \
     --env APP_NAME=2FAuth \
     --env APP_ENV=local \
     --env SITE_OWNER=change@me.com \

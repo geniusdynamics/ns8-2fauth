@@ -14,12 +14,15 @@ import secrets
 data = json.load(sys.stdin)
 
 # Setup default values
-random_key = secrets.token_hex(16)
+random_key = secrets.token_hex(32)
 APP_KEY = data.get("APP_KEY",random_key)
 
 # Talk with agent using file descriptor.
 
-agent.set_env("APP_KEY", APP_KEY)
+app_key = {
+    "APP_KEY": APP_KEY
+}
+agent.write_envfile('key.env', app_key)
 
 # Make sure everything is saved inside the environment file
 # just before starting systemd unit
