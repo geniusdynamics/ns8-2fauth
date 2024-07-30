@@ -18,22 +18,71 @@ host = data.get("host", "")
 APP_URL = "https://"+host
 agent.set_env("APP_URL", APP_URL)
 
+APP_NAME = "2FAuth"
+SITE_OWNER = data.get("SITE_OWNER", host)
+LOG_CHANNEL = data.get("LOG_CHANNEL", "daily")
+LOG_LEVEL = data.get("LOG_LEVEL", "notice")
+CACHE_DRIVER = data.get("CACHE_DRIVER", "file")
+SESSION_DRIVER = data.get("SESSION_DRIVER", "file")
+AUTHENTICATION_GUARD = data.get("AUTHENTICATION_GUARD", "web-guard")
+WEBAUTHN_NAME = data.get("WEBAUTHN_NAME", "2FAuth")
+BROADCAST_DRIVER = data.get("BROADCAST_DRIVER", "log")
+QUEUE_DRIVER = data.get("QUEUE_DRIVER", "sync")
+SESSION_LIFETIME = data.get("SESSION_LIFETIME", 120)
+REDIS_HOST = data.get("REDIS_HOST", "")
+REDIS_PASSWORD = data.get("REDIS_PASSWORD", "")
+REDIS_PORT = data.get("REDIS_PORT", 6379)
+PUSHER_APP_ID = data.get("PUSHER_APP_ID", "")
+PUSHER_APP_KEY = data.get("PUSHER_APP_KEY", "")
+PUSHER_APP_SECRET = data.get("PUSHER_APP_SECRET", "")
+PUSHER_APP_CLUSTER = data.get("PUSHER_APP_CLUSTER", "mt1")
+MIX_PUSHER_APP_KEY = PUSHER_APP_KEY
+MIX_PUSHER_APP_CLUSTER = PUSHER_APP_CLUSTER
+MIX_ENV = data.get("MIX_ENV", "local")
 
-#This is specific to you module, so you need to change it accordingly.
-# we read a json stdin {"vars1":true, "var2":"foo", "vars3": 3} and we writ it to .config/state/environment
-# Upper case to set environment variable and minor case to read from stdin
+# SET EMAIL SETTINGS
+rdb = agent.redis_connect(use_replica=True)
+smtp_settings = agent.get_smarthost_settings(rdb)
 
-# this values must exists in the json stdin
-# agent.set_env("MAIL_SERVER", data["mail_server"])
-# agent.set_env("LDAP_DOMAIN", data["ldap_domain"])
+MAIL_DRIVER = "SMTP"
+MAIL_HOST = smtp_settings['host']
+MAIL_PORT = smtp_settings['port']
+MAIL_USERNAME = smtp_settings['username']
+MAIL_PASSWORD = smtp_settings['password']
+MAIL_FROM_NAME = APP_NAME
+MAIL_FROM_ADDRESS = smtp_settings['username']
 
-# you can add default values for the following variables
-# agent.set_env("MAIL_DOMAIN",data.get("mail_domain",""))
-# agent.set_env("WOWORKERSCOUNT",data.get("workers_count",3))
-# agent.set_env("AUXILIARYACCOUNT",data.get("auxiliary_account",True))
-# agent.set_env("ACTIVESYNC",data.get("activesync",False))
-
-
-# Make sure everything is saved inside the environment file
-# just before starting systemd unit
+app_config = {
+    "APP_NAME": APP_NAME,
+    "APP_ENV": "local",
+    "SITE_OWNER": SITE_OWNER,
+    "APP_URL": APP_URL,
+    "LOG_CHANNEL": LOG_CHANNEL,
+    "LOG_LEVEL": LOG_LEVEL,
+    "CACHE_DRIVER": CACHE_DRIVER,
+    "SESSION_DRIVER": SESSION_DRIVER,
+    "AUTHENTICATION_GUARD": AUTHENTICATION_GUARD,
+    "WEBAUTHN_NAME": WEBAUTHN_NAME,
+    "BROADCAST_DRIVER": BROADCAST_DRIVER,
+    "QUEUE_DRIVER": QUEUE_DRIVER,
+    "SESSION_LIFETIME": SESSION_LIFETIME,
+    "REDIS_HOST": REDIS_HOST,
+    "REDIS_PASSWORD": REDIS_PASSWORD,
+    "REDIS_PORT": REDIS_PORT,
+    "PUSHER_APP_ID": PUSHER_APP_ID,
+    "PUSHER_APP_KEY": PUSHER_APP_KEY,
+    "PUSHER_APP_SECRET": PUSHER_APP_SECRET,
+    "PUSHER_APP_CLUSTER": PUSHER_APP_CLUSTER,
+    "MIX_PUSHER_APP_KEY": MIX_PUSHER_APP_KEY,
+    "MIX_PUSHER_APP_CLUSTER": MIX_PUSHER_APP_CLUSTER,
+    "MIX_ENV": MIX_ENV,
+    "MAIL_DRIVER": MAIL_DRIVER,
+    "MAIL_HOST": MAIL_HOST,
+    "MAIL_PORT": MAIL_PORT,
+    "MAIL_USERNAME": MAIL_USERNAME,
+    "MAIL_PASSWORD": MAIL_PASSWORD,
+    "MAIL_FROM_NAME": MAIL_FROM_NAME,
+    "MAIL_FROM_ADDRESS": MAIL_FROM_ADDRESS
+}
+agent.write_envfile("app.env", app_config)
 #agent.dump_env()
