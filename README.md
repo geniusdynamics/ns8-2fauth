@@ -54,6 +54,16 @@ To uninstall the instance:
 
     remove-module --no-preserve 2fauth1
 
+## Update
+
+update a module
+
+```shell
+ api-cli run update-module --data '{"module_url":"ghcr.io/geniusdynamics/2fauth:latest","instances":["2fauth11"],"force":true}'
+
+```
+
+
 ## Smarthost setting discovery
 
 Some configuration settings, like the smarthost setup, are not part of the
