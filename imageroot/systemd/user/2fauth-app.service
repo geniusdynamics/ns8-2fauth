@@ -27,7 +27,6 @@ ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
     --volume 2fauth-config:/tmp:Z \
     --env-file=%S/state/key.env \
     --env-file=%S/state/app.env \
-    --env DB_DATABASE=%S/state/database.sqlite \
     docker.io/2fauth/2fauth:5.2.0
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/2fauth-app.ctr-id -t 10
 ExecReload=/usr/bin/podman kill -s HUP 2fauth-app

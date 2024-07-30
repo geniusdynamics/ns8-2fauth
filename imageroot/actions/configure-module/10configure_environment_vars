@@ -84,5 +84,7 @@ app_config = {
     "MAIL_FROM_NAME": MAIL_FROM_NAME,
     "MAIL_FROM_ADDRESS": MAIL_FROM_ADDRESS
 }
+# SSO Builds
+
 agent.write_envfile("app.env", app_config)
 #agent.dump_env()
