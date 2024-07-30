@@ -11,6 +11,7 @@ After=2fauth.service
 [Service]
 Environment=PODMAN_SYSTEMD_UNIT=%n
 EnvironmentFile=%S/state/environment
+
 EnvironmentFile=-%S/state/smarthost.env
 WorkingDirectory=%S/state
 Restart=always
@@ -26,8 +27,8 @@ ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
     --volume 2fauth-config:/tmp:Z \
     --env-file=%/state/key.env \
     --env-file=%/state/app.env \
-    --env DB_DATABASE=database.sqlite \
-    ${2FAUTH_IMAGE}
+    --env DB_DATABASE=%S/state/database.sqlite \
+    docker.io/2fauth/2fauth:5.1.0
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/2fauth-app.ctr-id -t 10
 ExecReload=/usr/bin/podman kill -s HUP 2fauth-app
 SyslogIdentifier=%u
