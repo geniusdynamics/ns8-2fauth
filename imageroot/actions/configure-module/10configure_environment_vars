@@ -44,7 +44,7 @@ MIX_ENV = data.get("MIX_ENV", "local")
 rdb = agent.redis_connect(use_replica=True)
 smtp_settings = agent.get_smarthost_settings(rdb)
 
-MAIL_DRIVER = "SMTP"
+MAIL_MAILER = "SMTP"
 MAIL_HOST = smtp_settings['host']
 MAIL_PORT = smtp_settings['port']
 MAIL_USERNAME = smtp_settings['username']
@@ -76,7 +76,7 @@ app_config = {
     "MIX_PUSHER_APP_KEY": MIX_PUSHER_APP_KEY,
     "MIX_PUSHER_APP_CLUSTER": MIX_PUSHER_APP_CLUSTER,
     "MIX_ENV": MIX_ENV,
-    "MAIL_DRIVER": MAIL_DRIVER,
+    "MAIL_MAILER": MAIL_MAILER,
     "MAIL_HOST": MAIL_HOST,
     "MAIL_PORT": MAIL_PORT,
     "MAIL_USERNAME": MAIL_USERNAME,
