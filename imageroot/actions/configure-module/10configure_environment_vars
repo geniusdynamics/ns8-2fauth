@@ -15,7 +15,7 @@ data = json.load(sys.stdin)
 
 # 2fauth webauthn settings
 host = data.get("host", "")
-APP_URL = "https://"+host
+APP_URL = "https://" + host
 agent.set_env("APP_URL", APP_URL)
 
 APP_NAME = "2FAuth"
@@ -45,12 +45,12 @@ rdb = agent.redis_connect(use_replica=True)
 smtp_settings = agent.get_smarthost_settings(rdb)
 
 MAIL_MAILER = "SMTP"
-MAIL_HOST = smtp_settings['host']
-MAIL_PORT = smtp_settings['port']
-MAIL_USERNAME = smtp_settings['username']
-MAIL_PASSWORD = smtp_settings['password']
+MAIL_HOST = smtp_settings["host"]
+MAIL_PORT = smtp_settings["port"]
+MAIL_USERNAME = smtp_settings["username"]
+MAIL_PASSWORD = smtp_settings["password"]
 MAIL_FROM_NAME = APP_NAME
-MAIL_FROM_ADDRESS = smtp_settings['username']
+MAIL_FROM_ADDRESS = smtp_settings["username"]
 
 app_config = {
     "APP_NAME": APP_NAME,
@@ -82,9 +82,9 @@ app_config = {
     "MAIL_USERNAME": MAIL_USERNAME,
     "MAIL_PASSWORD": MAIL_PASSWORD,
     "MAIL_FROM_NAME": MAIL_FROM_NAME,
-    "MAIL_FROM_ADDRESS": MAIL_FROM_ADDRESS
+    "MAIL_FROM_ADDRESS": MAIL_FROM_ADDRESS,
 }
 # SSO Builds
 
 agent.write_envfile("app.env", app_config)
-#agent.dump_env()
+# agent.dump_env()
