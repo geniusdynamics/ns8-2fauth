@@ -23,7 +23,7 @@ ExecStartPre=-runagent discover-smarthost
 ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
     --cidfile %t/2fauth-app.ctr-id --cgroups=no-conmon \
     --pod-id-file %t/2fauth.pod-id --replace -d --name  2fauth-app \
-    --volume 2fauth-app:/var/www/html/:Z \
+    --volume 2fauth-app:/2fauth:Z \
     --volume 2fauth-config:/tmp:Z \
     --env-file=%S/state/key.env \
     --env-file=%S/state/app.env \
