@@ -14,7 +14,7 @@ images=()
 repobase="${REPOBASE:-ghcr.io/geniusdynamics}"
 # Configure the image name
 reponame="2fauth"
-app_version="6.0.0"
+app_version="8.0.2"
 # Create a new empty container image
 container=$(buildah from scratch)
 
