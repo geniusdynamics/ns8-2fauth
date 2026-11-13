@@ -17,7 +17,8 @@ reponame="2fauth"
 # Node.js 25+ no longer ships Corepack, install it from npm
 # renovate: datasource=npm packageName=corepack
 corepack_version=0.36.0
-app_version="8.0.2"
+# renovate: datasource=docker packageName=docker.io/2fauth/2fauth
+app_version=8.0.2
 # Create a new empty container image
 container=$(buildah from scratch)
 
