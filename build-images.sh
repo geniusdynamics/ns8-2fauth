@@ -18,7 +18,7 @@ reponame="2fauth"
 # renovate: datasource=npm packageName=corepack
 corepack_version=0.36.0
 # renovate: datasource=docker packageName=docker.io/2fauth/2fauth
-app_version=8.0.2
+app_version=8.0.3
 # Create a new empty container image
 container=$(buildah from scratch)
 
