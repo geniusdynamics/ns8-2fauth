@@ -7,4 +7,9 @@
 
 set -e
 
-systemctl --user try-reload-or-restart 2fauth.service
+# Redirect any output to the journal (stderr)
+exec 1>&2
+
+# The container reads state/smarthost.env when it starts: a restart runs
+# bin/discover-smarthost again (ExecStartPre) and applies the new values.
+systemctl --user -T try-restart 2fauth-app.service

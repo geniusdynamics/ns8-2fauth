@@ -4,7 +4,7 @@
 #
 
 [Unit]
-Description=Podman  2fauth-app.service
+Description=Podman 2fauth-app.service
 BindsTo=2fauth.service
 After=2fauth.service
 
@@ -12,24 +12,23 @@ After=2fauth.service
 Environment=PODMAN_SYSTEMD_UNIT=%n
 EnvironmentFile=%S/state/environment
 
-EnvironmentFile=-%S/state/smarthost.env
 WorkingDirectory=%S/state
 Restart=always
 TimeoutStopSec=70
-ExecStartPre=/bin/mkdir -p config
-ExecStartPre=/bin/bash -c 'if [ ! -f %S/state/database.sqlite ]; then /bin/touch %S/state/database.sqlite; fi'
 ExecStartPre=/bin/rm -f %t/2fauth-app.pid %t/2fauth-app.ctr-id
+ExecStartPre=/bin/bash -c 'umask 077 && touch smarthost.env passwords.env'
 ExecStartPre=-runagent discover-smarthost
 ExecStart=/usr/bin/podman run --conmon-pidfile %t/2fauth-app.pid \
     --cidfile %t/2fauth-app.ctr-id --cgroups=no-conmon \
-    --pod-id-file %t/2fauth.pod-id --replace -d --name  2fauth-app \
+    --pod-id-file %t/2fauth.pod-id --replace -d --name 2fauth-app \
     --volume 2fauth-app:/2fauth:Z \
     --volume 2fauth-config:/tmp:Z \
     --env-file=%S/state/key.env \
     --env-file=%S/state/app.env \
+    --env-file=%S/state/smarthost.env \
+    --env-file=%S/state/passwords.env \
     ${I2FAUTH_IMAGE}
 ExecStop=/usr/bin/podman stop --ignore --cidfile %t/2fauth-app.ctr-id -t 10
-ExecReload=/usr/bin/podman kill -s HUP 2fauth-app
 SyslogIdentifier=%u
 ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/2fauth-app.ctr-id
 PIDFile=%t/2fauth-app.pid
