@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# Migrate an instance installed by a module release up to 2FAuth 8.0.3.
+# Runs before 20restart. Idempotent.
+#
+# - state/key.env (APP_KEY) is kept as is, only made private (0600)
+# - customized values of the old state/app.env become TWOFAUTH_* settings
+# - state/passwords.env is created (0600)
+# - state/app.env is generated again in the new format; the mail transport
+#   moved to state/smarthost.env (bin/discover-smarthost)
+#
+
+import os
+import sys
+
+import agent
+
+sys.path.insert(0, os.path.join(os.environ["AGENT_INSTALL_DIR"], "pypkg"))
+import twofauth_conf  # noqa: E402
+
+if os.path.exists("key.env"):
+    os.chmod("key.env", 0o600)
+
+if not os.path.exists(twofauth_conf.SECRETS_FILE):
+    twofauth_conf.write_secrets({})
+os.chmod(twofauth_conf.SECRETS_FILE, 0o600)
+
+for envfile in ("smarthost.env", twofauth_conf.APP_ENV_FILE):
+    if os.path.exists(envfile):
+        os.chmod(envfile, 0o600)
+
+environ = agent.read_envfile("environment")
+
+if os.path.exists(twofauth_conf.APP_ENV_FILE):
+    appenv = agent.read_envfile(twofauth_conf.APP_ENV_FILE)
+    if twofauth_conf.is_legacy_app_env(appenv):
+        guard = appenv.get("AUTHENTICATION_GUARD", "web-guard")
+        if guard != "web-guard":
+            print(agent.SD_WARNING + "AUTHENTICATION_GUARD=%s is not supported behind Traefik: using web-guard" % guard, file=sys.stderr)
+        imports = twofauth_conf.legacy_env_entries(appenv, environ)
+        if imports:
+            print("Importing legacy 2FAuth settings: " + ", ".join(sorted(imports)), file=sys.stderr)
+            agent.mset_env(imports)
+            environ.update(imports)
+
+# APP_URL is generated into app.env from TRAEFIK_HOST
+if "APP_URL" in environ:
+    agent.unset_env("APP_URL")
+
+if environ.get("TRAEFIK_HOST"):
+    twofauth_conf.write_app_env(environ)

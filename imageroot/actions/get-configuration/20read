@@ -6,21 +6,38 @@
 #
 
 #
-# Read configuration
+# Read configuration. Secrets are never returned: the *_set booleans tell
+# whether one is saved.
 #
 
 import os
 import sys
 import json
-import agent
 
-# Prepare return variable
+sys.path.insert(0, os.path.join(os.environ["AGENT_INSTALL_DIR"], "pypkg"))
+import twofauth_conf  # noqa: E402
+
 config = {}
 
-# Read current configuration from the environment file
-config["host"] = os.getenv("TRAEFIK_HOST","")
-config["http2https"] = os.getenv("TRAEFIK_HTTP2HTTPS") == "True"
-config["lets_encrypt"] = os.getenv("TRAEFIK_LETS_ENCRYPT") == "True"
+config["host"] = os.getenv("TRAEFIK_HOST", "")
+config["http2https"] = os.getenv("TRAEFIK_HTTP2HTTPS", "True").lower() == "true"
+config["lets_encrypt"] = os.getenv("TRAEFIK_LETS_ENCRYPT", "False").lower() == "true"
 
-# Dump the configuration to stdout
+config.update(twofauth_conf.read_fields(os.environ))
+config["user_preferences"] = twofauth_conf.read_user_preferences(os.environ)
+
+secrets = twofauth_conf.read_secrets()
+for field, (var, _owner) in twofauth_conf.SECRETS.items():
+    config[field + "_set"] = bool(secrets.get(var))
+
+# Admin settings: the live values when 2FAuth runs, else the values the
+# module last applied (or the upstream defaults)
+live = twofauth_conf.get_live_app_settings(timeout=20) if config["host"] else None
+if live is None:
+    config.update(twofauth_conf.read_saved_app_settings(os.environ))
+    config["app_settings_source"] = "saved"
+else:
+    config.update(live)
+    config["app_settings_source"] = "live"
+
 json.dump(config, fp=sys.stdout)

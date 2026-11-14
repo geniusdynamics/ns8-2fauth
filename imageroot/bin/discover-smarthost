@@ -5,32 +5,55 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-import sys
-import agent
+#
+# Write state/smarthost.env with the 2FAuth mail settings, from the cluster
+# smarthost and the module settings. Runs before the container starts.
+# The file holds the smarthost password: mode 0600.
+#
+
 import os
+
+import agent
 
 # Connect the local Redis replica. This is necessary to consistently start
 # the service if the leader node is not reachable:
 rdb = agent.redis_connect(use_replica=True)
-smtp_settings = agent.get_smarthost_settings(rdb)
+smtp = agent.get_smarthost_settings(rdb)
+
+host = os.environ.get("TRAEFIK_HOST", "") or "localhost"
+app_name = os.environ.get("TWOFAUTH_APP_NAME", "") or "2FAuth"
+from_name = os.environ.get("TWOFAUTH_MAIL_FROM_NAME", "") or app_name
+from_address = os.environ.get("TWOFAUTH_MAIL_FROM_ADDRESS", "")
+if not from_address:
+    from_address = smtp["username"] if "@" in smtp["username"] else "noreply@" + host
+
+env = {
+    "MAIL_FROM_ADDRESS": from_address,
+    "MAIL_FROM_NAME": from_name,
+}
+
+if smtp["enabled"] and smtp["host"]:
+    # NS8 "starttls" and "tls" both map to Laravel "tls": port 465 uses
+    # implicit TLS (smtps), other ports STARTTLS.
+    env.update({
+        "MAIL_MAILER": "smtp",
+        "MAIL_HOST": smtp["host"],
+        "MAIL_PORT": smtp["port"],
+        "MAIL_USERNAME": smtp["username"],
+        "MAIL_PASSWORD": smtp["password"],
+        "MAIL_ENCRYPTION": "null" if smtp["encrypt_smtp"] == "none" else "tls",
+        "MAIL_VERIFY_SSL_PEER": "true" if smtp["tls_verify"] else "false",
+    })
+else:
+    # No smarthost: 2FAuth writes the messages to its log
+    env["MAIL_MAILER"] = "log"
 
 envfile = "smarthost.env"
-
-# Using .tmp suffix: do not overwrite the target file until the new one is
-# saved to disk:
-with open(envfile + ".tmp", "w") as efp:
-    # HINT for 2fauth: adjust variable names as needed
-    print(f"SMTP_ENABLED={'1' if smtp_settings['enabled'] else ''}", file=efp)
-    print(f"SMTP_HOST={smtp_settings['host']}", file=efp)
-    print(f"SMTP_PORT={smtp_settings['port']}", file=efp)
-    print(f"SMTP_USERNAME={smtp_settings['username']}", file=efp)
-    print(f"SMTP_PASSWORD={smtp_settings['password']}", file=efp)
-    print(f"SMTP_ENCRYPTION={smtp_settings['encrypt_smtp']}", file=efp)
-    print(f"SMTP_TLSVERIFY={'1' if smtp_settings['tls_verify'] else ''}", file=efp)
+tmpfile = envfile + ".tmp." + str(os.getpid())
+fd = os.open(tmpfile, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w") as efp:
+    for key in sorted(env):
+        print(f"{key}={env[key]}", file=efp)
 
 # Commit changes by replacing the existing envfile:
-os.replace(envfile + ".tmp", envfile)
-
-# NOTE: The generated envfile can be included in the service container
-#       with `podman run --env-file` or in Systemd unit with
-#       `Environment=-%S/state/smarthost.env`
+os.replace(tmpfile, envfile)

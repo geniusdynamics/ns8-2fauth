@@ -18,7 +18,7 @@ reponame="2fauth"
 # renovate: datasource=npm packageName=corepack
 corepack_version=0.36.0
 # renovate: datasource=docker packageName=docker.io/2fauth/2fauth
-app_version=8.0.3
+TWOFAUTH_VERSION=9.0.1
 # Create a new empty container image
 container=$(buildah from scratch)
 
@@ -50,8 +50,8 @@ buildah config --entrypoint=/ \
 	--label="org.nethserver.authorizations=traefik@node:routeadm" \
 	--label="org.nethserver.tcp-ports-demand=1" \
 	--label="org.nethserver.rootfull=0" \
-    --label="org.nethserver.min-core=3.0.0" \
-	--label="org.nethserver.images=docker.io/2fauth/2fauth:${app_version}" \
+	--label="org.nethserver.min-core=3.0.0" \
+	--label="org.nethserver.images=docker.io/2fauth/2fauth:${TWOFAUTH_VERSION}" \
 	"${container}"
 # Commit the image
 buildah commit "${container}" "${repobase}/${reponame}"

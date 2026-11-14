@@ -5,11 +5,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-# If the control reaches this step, the service can be enabled and started
+# Restart the running services on the new image and env files. Stopped
+# (never configured) instances stay stopped.
 
 set -e
 
 # Redirect any output to the journal (stderr)
 exec 1>&2
 
-systemctl --user try-restart 2fauth.service
+systemctl --user try-restart 2fauth.service 2fauth-app.service

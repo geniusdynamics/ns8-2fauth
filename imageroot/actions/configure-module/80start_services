@@ -9,8 +9,11 @@ set -e
 # Redirect any output to the journal (stderr)
 exec 1>&2
 
-# If the control reaches this step, the service can be enabled and started
+# If the control reaches this step, the service can be enabled and started.
+# The env files are read when the container starts: restart it so that the
+# new settings apply.
 
-touch smarthost.env
+(umask 077; touch smarthost.env passwords.env)
 
-systemctl --user enable --now 2fauth.service
+systemctl --user enable 2fauth.service
+systemctl --user restart 2fauth.service 2fauth-app.service
