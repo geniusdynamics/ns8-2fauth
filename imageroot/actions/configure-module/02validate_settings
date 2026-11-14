@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# Cross-field checks that the JSON schema cannot express
+#
+
+import json
+import os
+import sys
+
+import agent
+
+sys.path.insert(0, os.path.join(os.environ["AGENT_INSTALL_DIR"], "pypkg"))
+import twofauth_conf  # noqa: E402
+
+agent.set_weight(os.path.basename(__file__), 0)  # Validation step, no task progress
+
+data = json.load(sys.stdin)
+current = twofauth_conf.read_fields(os.environ)
+saved_secrets = twofauth_conf.read_secrets()
+saved_settings = twofauth_conf.read_saved_app_settings(os.environ)
+
+
+def effective(field):
+    value = data.get(field, current.get(field))
+    return value.strip() if isinstance(value, str) else value
+
+
+def has_secret(field):
+    var = twofauth_conf.SECRETS[field][0]
+    return bool(data.get(field)) or bool(saved_secrets.get(var))
+
+
+errors = []
+
+
+def fail(field, error):
+    errors.append({"field": field, "parameter": field, "value": data.get(field, ""), "error": error})
+
+
+openid_on = bool(effective("openid_client_id"))
+github_on = bool(effective("github_client_id"))
+
+if openid_on:
+    for field in ("openid_authorize_url", "openid_token_url", "openid_userinfo_url"):
+        if not effective(field):
+            fail(field, "required_for_openid")
+    if not has_secret("openid_client_secret"):
+        fail("openid_client_secret", "client_secret_required")
+
+if github_on and not has_secret("github_client_secret"):
+    fail("github_client_secret", "client_secret_required")
+
+use_sso_only = data.get("use_sso_only", saved_settings["use_sso_only"])
+enable_sso = data.get("enable_sso", saved_settings["enable_sso"])
+if use_sso_only and not (enable_sso and (openid_on or github_on)):
+    # Nobody could log in any more
+    fail("use_sso_only", "sso_only_requires_provider")
+
+if errors:
+    agent.set_status('validation-failed')
+    json.dump(errors, fp=sys.stdout)
+    sys.exit(3)

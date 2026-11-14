@@ -2,12 +2,48 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Configure 2fauth",
     "$id": "http://nethserver.org/json-schema/task/input/2fauth/configure-module",
-    "description": "Configure 2fauth",
+    "description": "Configure 2fauth. Every field but host, http2https and lets_encrypt is optional: an absent field keeps its saved value. Fields marked 'CLI only' are not on the Settings page.",
     "examples": [
         {
             "host": "2fauth.domain.org",
             "http2https": true,
             "lets_encrypt": true
+        },
+        {
+            "host": "2fauth.domain.org",
+            "http2https": true,
+            "lets_encrypt": true,
+            "app_name": "2FAuth",
+            "mail_from_address": "2fauth@domain.org",
+            "enable_sso": true,
+            "use_sso_only": false,
+            "disable_registration": true,
+            "keep_sso_registration_enabled": true,
+            "openid_authorize_url": "https://idp.domain.org/application/o/authorize/",
+            "openid_token_url": "https://idp.domain.org/application/o/token/",
+            "openid_userinfo_url": "https://idp.domain.org/application/o/userinfo/",
+            "openid_client_id": "2fauth",
+            "openid_client_secret": "s3cr3t",
+            "openid_http_verify_ssl_peer": true,
+            "github_client_id": "",
+            "github_client_secret": ""
+        },
+        {
+            "host": "2fauth.domain.org",
+            "http2https": true,
+            "lets_encrypt": false,
+            "app_timezone": "Europe/Rome",
+            "log_channel": "stderr",
+            "session_lifetime": 480,
+            "user_preferences": {
+                "THEME": {
+                    "default": "dark",
+                    "locked": false
+                },
+                "LANG": {
+                    "default": "it"
+                }
+            }
         }
     ],
     "type": "object",
@@ -32,6 +68,252 @@
             "type": "boolean",
             "title": "HTTP to HTTPS redirection",
             "description": "Redirect all the HTTP requests to HTTPS"
+        },
+        "app_name": {
+            "type": "string",
+            "title": "Application name",
+            "description": "2FAuth APP_NAME, shown in the web app, the e-mails and the WebAuthn prompts. Default '2FAuth'. Changing it logs every user out (the session cookie name derives from it).",
+            "minLength": 1,
+            "pattern": "^[^\"'\\\\\\n\\r]*$",
+            "maxLength": 255
+        },
+        "mail_from_address": {
+            "type": "string",
+            "title": "Sender address",
+            "description": "2FAuth MAIL_FROM_ADDRESS. Empty: the smarthost user name when it is an e-mail address, else noreply@<host>. Mail goes through the NS8 smarthost.",
+            "pattern": "^(|[^@\\s\"'\\\\]+@[^@\\s\"'\\\\]+)$",
+            "maxLength": 255
+        },
+        "enable_sso": {
+            "type": "boolean",
+            "title": "Enable SSO",
+            "description": "2FAuth admin setting enableSso (stored in the 2FAuth database). Default true."
+        },
+        "use_sso_only": {
+            "type": "boolean",
+            "title": "SSO only",
+            "description": "2FAuth admin setting useSsoOnly: users log in with OpenID or GitHub only. Requires a configured provider. Default false."
+        },
+        "disable_registration": {
+            "type": "boolean",
+            "title": "Disable registration",
+            "description": "2FAuth admin setting disableRegistration: no new account can be created with the registration form. Register the first (admin) account before disabling it. Default false."
+        },
+        "keep_sso_registration_enabled": {
+            "type": "boolean",
+            "title": "Keep SSO registration",
+            "description": "2FAuth admin setting keepSsoRegistrationEnabled: a user who logs in with SSO for the first time gets an account even when registration is disabled. Default false."
+        },
+        "openid_authorize_url": {
+            "type": "string",
+            "title": "OpenID authorization endpoint",
+            "description": "2FAuth OPENID_AUTHORIZE_URL, like https://idp.example.org/application/o/authorize/",
+            "pattern": "^(|https?://[^\\s\"'\\\\]+)$",
+            "maxLength": 2048
+        },
+        "openid_token_url": {
+            "type": "string",
+            "title": "OpenID token endpoint",
+            "description": "2FAuth OPENID_TOKEN_URL",
+            "pattern": "^(|https?://[^\\s\"'\\\\]+)$",
+            "maxLength": 2048
+        },
+        "openid_userinfo_url": {
+            "type": "string",
+            "title": "OpenID user info endpoint",
+            "description": "2FAuth OPENID_USERINFO_URL",
+            "pattern": "^(|https?://[^\\s\"'\\\\]+)$",
+            "maxLength": 2048
+        },
+        "openid_client_id": {
+            "type": "string",
+            "title": "OpenID client ID",
+            "description": "2FAuth OPENID_CLIENT_ID. Empty disables the OpenID provider and removes its saved secret. Redirect URI to register: https://<host>/socialite/callback/openid",
+            "pattern": "^[^\"'\\\\\\n\\r]*$",
+            "maxLength": 255
+        },
+        "openid_client_secret": {
+            "type": "string",
+            "title": "OpenID client secret",
+            "description": "2FAuth OPENID_CLIENT_SECRET, saved in state/passwords.env (mode 0600) and never returned. Empty keeps the saved secret.",
+            "pattern": "^[^\\n\\r]*$",
+            "maxLength": 4096
+        },
+        "openid_http_verify_ssl_peer": {
+            "type": "boolean",
+            "title": "Verify the OpenID provider certificate",
+            "description": "2FAuth OPENID_HTTP_VERIFY_SSL_PEER. Default true. Disable only for a provider with a self-signed certificate."
+        },
+        "github_client_id": {
+            "type": "string",
+            "title": "GitHub client ID",
+            "description": "2FAuth GITHUB_CLIENT_ID. Empty disables GitHub login and removes its saved secret. Authorization callback URL to register: https://<host>/socialite/callback/github",
+            "pattern": "^[^\"'\\\\\\n\\r]*$",
+            "maxLength": 255
+        },
+        "github_client_secret": {
+            "type": "string",
+            "title": "GitHub client secret",
+            "description": "2FAuth GITHUB_CLIENT_SECRET, saved in state/passwords.env (mode 0600) and never returned. Empty keeps the saved secret.",
+            "pattern": "^[^\\n\\r]*$",
+            "maxLength": 4096
+        },
+        "mail_from_name": {
+            "type": "string",
+            "title": "Sender name",
+            "description": "CLI only. 2FAuth MAIL_FROM_NAME. Empty: the application name.",
+            "pattern": "^[^\"'\\\\\\n\\r]*$",
+            "maxLength": 255
+        },
+        "app_timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "description": "CLI only. 2FAuth APP_TIMEZONE, used to record dates in the database, like 'Europe/Rome'. Default 'UTC'. Existing records are not converted. Users choose their display timezone in their own settings.",
+            "pattern": "^[A-Za-z0-9_+/-]+$",
+            "maxLength": 64
+        },
+        "log_channel": {
+            "type": "string",
+            "title": "Log channel",
+            "description": "CLI only. 2FAuth LOG_CHANNEL: 'daily' (7 rotated files in the 2fauth-app volume, default), 'single', 'stderr' (the container log, in the journal) or 'errorlog'.",
+            "enum": [
+                "daily",
+                "single",
+                "stderr",
+                "errorlog"
+            ]
+        },
+        "log_level": {
+            "type": "string",
+            "title": "Log level",
+            "description": "CLI only. 2FAuth LOG_LEVEL. Default 'notice'.",
+            "enum": [
+                "debug",
+                "info",
+                "notice",
+                "warning",
+                "error",
+                "critical",
+                "alert",
+                "emergency"
+            ]
+        },
+        "session_lifetime": {
+            "type": "integer",
+            "title": "Session lifetime",
+            "description": "CLI only. 2FAuth SESSION_LIFETIME, in minutes. Default 120.",
+            "minimum": 1,
+            "maximum": 525600
+        },
+        "login_throttle": {
+            "type": "integer",
+            "title": "Login throttle",
+            "description": "CLI only. 2FAuth LOGIN_THROTTLE: failed logins allowed per minute before a lockout. Default 5.",
+            "minimum": 1,
+            "maximum": 1000
+        },
+        "throttle_api": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "title": "API throttle",
+            "description": "CLI only. 2FAuth THROTTLE_API: API calls per minute from one IP; null disables the limit. Default 60.",
+            "minimum": 1
+        },
+        "throttle_api_during_import": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "title": "API throttle during import",
+            "description": "CLI only. 2FAuth THROTTLE_API_DURING_IMPORT: API calls per minute made by the Import feature; null disables the limit. Default 1000.",
+            "minimum": 1
+        },
+        "authentication_log_retention": {
+            "type": "integer",
+            "title": "Authentication log retention",
+            "description": "CLI only. 2FAuth AUTHENTICATION_LOG_RETENTION, in days. Default 365.",
+            "minimum": 1
+        },
+        "otp_log_retention": {
+            "type": "integer",
+            "title": "OTP log retention",
+            "description": "CLI only. 2FAuth OTP_LOG_RETENTION, in days. Default 365.",
+            "minimum": 1
+        },
+        "webauthn_name": {
+            "type": "string",
+            "title": "WebAuthn name",
+            "description": "CLI only. 2FAuth WEBAUTHN_NAME, the relying party name shown by security keys. Empty: the application name.",
+            "pattern": "^[^\"'\\\\\\n\\r]*$",
+            "maxLength": 255
+        },
+        "webauthn_user_verification": {
+            "type": "string",
+            "title": "WebAuthn user verification",
+            "description": "CLI only. 2FAuth WEBAUTHN_USER_VERIFICATION. Default 'preferred'.",
+            "enum": [
+                "required",
+                "preferred",
+                "discouraged"
+            ]
+        },
+        "content_security_policy": {
+            "type": "boolean",
+            "title": "Content Security Policy",
+            "description": "CLI only. 2FAuth CONTENT_SECURITY_POLICY. Default true."
+        },
+        "block_otpauth_imagelink_fetching": {
+            "type": "boolean",
+            "title": "Block otpauth image links",
+            "description": "CLI only. 2FAuth BLOCK_OPTAUTH_IMAGELINK_FETCHING: never fetch the images linked in imported QR codes (SSRF defense). Default true."
+        },
+        "php_memory_limit_temp_override": {
+            "type": "integer",
+            "title": "QR code memory limit",
+            "description": "CLI only. 2FAuth PHP_MEMORY_LIMIT_TEMP_OVERRIDE, in MB, applied while decoding uploaded QR codes. Default 512.",
+            "minimum": 64,
+            "maximum": 8192
+        },
+        "allow_pat_while_sso_only": {
+            "type": "boolean",
+            "title": "Allow personal access tokens with SSO only",
+            "description": "CLI only. 2FAuth admin setting allowPatWhileSsoOnly (stored in the 2FAuth database). Default false."
+        },
+        "proxy_for_outgoing_requests": {
+            "type": "string",
+            "title": "Outgoing proxy",
+            "description": "CLI only. 2FAuth PROXY_FOR_OUTGOING_REQUESTS, like http://user:pass@proxy.example.org:3128. Saved in state/passwords.env and never returned. Absent keeps the saved value, empty removes it.",
+            "pattern": "^(|https?://\\S+)$",
+            "maxLength": 2048
+        },
+        "user_preferences": {
+            "type": "object",
+            "title": "User preferences",
+            "description": "CLI only. Default and locked user preferences (2FAuth USERPREF_DEFAULT__<NAME> and USERPREF_LOCKED__<NAME>). Keys are the upper-case preference names, like THEME or LANG. The object replaces the saved one; {} removes them all. See https://docs.2fauth.app/getting-started/config/user-preferences/",
+            "propertyNames": {
+                "pattern": "^[A-Z][A-Z0-9_]*$",
+                "maxLength": 64
+            },
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "default": {
+                        "type": [
+                            "string",
+                            "boolean",
+                            "integer",
+                            "number"
+                        ],
+                        "pattern": "^[A-Za-z0-9_.:/+-]*$"
+                    },
+                    "locked": {
+                        "type": "boolean"
+                    }
+                }
+            }
         }
     }
 }

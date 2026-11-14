@@ -13,11 +13,17 @@ request = json.load(sys.stdin)
 
 original_environment = request['environment']
 
+restored = {}
 for evar in [
         "TRAEFIK_HOST",
         "TRAEFIK_HTTP2HTTPS",
-        "TRAEFIK_LETS_ENCRYPT",
     ]:
-    agent.set_env(evar, original_environment[evar])
+    if evar in original_environment:
+        restored[evar] = original_environment[evar]
 
-agent.dump_env()
+# 2FAuth settings (absent from backups of releases up to 2FAuth 8.0.3)
+for evar, value in original_environment.items():
+    if evar.startswith("TWOFAUTH_"):
+        restored[evar] = value
+
+agent.mset_env(restored)

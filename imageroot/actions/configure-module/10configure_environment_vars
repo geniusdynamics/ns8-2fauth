@@ -5,86 +5,64 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+#
+# Store the 2FAuth settings and generate the container env files:
+# - non-secret settings go to the module environment (TWOFAUTH_*)
+# - client secrets go to state/passwords.env (mode 0600)
+# - state/app.env is generated for the container
+#
+# A field absent from the input keeps its saved value, so the Settings page
+# never resets the fields that are configurable from the CLI only.
+#
+
 import json
+import os
 import sys
+
 import agent
 
-# Try to parse the stdin as JSON.
-# If parsing fails, output everything to stderr
+sys.path.insert(0, os.path.join(os.environ["AGENT_INSTALL_DIR"], "pypkg"))
+import twofauth_conf  # noqa: E402
+
 data = json.load(sys.stdin)
+current = twofauth_conf.read_fields(os.environ)
 
-# 2fauth webauthn settings
-host = data.get("host", "")
-APP_URL = "https://" + host
-agent.set_env("APP_URL", APP_URL)
+# Non-secret settings
+new_env = {}
+effective = {}
+for field, (_var, ftype, _default, _ui) in twofauth_conf.FIELDS.items():
+    value = data[field] if field in data else current[field]
+    if ftype == "str":
+        value = value.strip()
+    effective[field] = value
+    new_env[twofauth_conf.env_name(field)] = twofauth_conf.to_env(ftype, value)
+agent.mset_env(new_env)
 
-APP_NAME = "2FAuth"
-SITE_OWNER = data.get("SITE_OWNER", host)
-LOG_CHANNEL = data.get("LOG_CHANNEL", "daily")
-LOG_LEVEL = data.get("LOG_LEVEL", "notice")
-CACHE_DRIVER = data.get("CACHE_DRIVER", "file")
-SESSION_DRIVER = data.get("SESSION_DRIVER", "file")
-AUTHENTICATION_GUARD = data.get("AUTHENTICATION_GUARD", "web-guard")
-WEBAUTHN_NAME = data.get("WEBAUTHN_NAME", "2FAuth")
-BROADCAST_DRIVER = data.get("BROADCAST_DRIVER", "log")
-QUEUE_DRIVER = data.get("QUEUE_DRIVER", "sync")
-SESSION_LIFETIME = data.get("SESSION_LIFETIME", 120)
-REDIS_HOST = data.get("REDIS_HOST", "")
-REDIS_PASSWORD = data.get("REDIS_PASSWORD", "")
-REDIS_PORT = data.get("REDIS_PORT", 6379)
-PUSHER_APP_ID = data.get("PUSHER_APP_ID", "")
-PUSHER_APP_KEY = data.get("PUSHER_APP_KEY", "")
-PUSHER_APP_SECRET = data.get("PUSHER_APP_SECRET", "")
-PUSHER_APP_CLUSTER = data.get("PUSHER_APP_CLUSTER", "mt1")
-MIX_PUSHER_APP_KEY = PUSHER_APP_KEY
-MIX_PUSHER_APP_CLUSTER = PUSHER_APP_CLUSTER
-MIX_ENV = data.get("MIX_ENV", "local")
+# User preferences: the given object replaces the saved one
+if "user_preferences" in data:
+    for key in list(agent.read_envfile("environment")):
+        if key.startswith(twofauth_conf.USERPREF_PREFIX):
+            agent.unset_env(key)
+    agent.mset_env(twofauth_conf.user_preferences_env(data["user_preferences"]))
 
-# SET EMAIL SETTINGS
-rdb = agent.redis_connect(use_replica=True)
-smtp_settings = agent.get_smarthost_settings(rdb)
+# Secrets: an empty client secret keeps the saved one; clearing the client
+# id removes the provider and its secret.
+secrets = twofauth_conf.read_secrets()
+for field, (var, owner) in twofauth_conf.SECRETS.items():
+    given = data.get(field)
+    if owner is not None:
+        if not effective[owner]:
+            secrets.pop(var, None)
+        elif given:
+            secrets[var] = given
+    elif field in data:
+        if given:
+            secrets[var] = given
+        else:
+            secrets.pop(var, None)
+twofauth_conf.write_secrets(secrets)
 
-MAIL_MAILER = "SMTP"
-MAIL_HOST = smtp_settings["host"]
-MAIL_PORT = smtp_settings["port"]
-MAIL_USERNAME = smtp_settings["username"]
-MAIL_PASSWORD = smtp_settings["password"]
-MAIL_FROM_NAME = APP_NAME
-MAIL_FROM_ADDRESS = smtp_settings["username"]
-
-app_config = {
-    "APP_NAME": APP_NAME,
-    "APP_ENV": "local",
-    "SITE_OWNER": SITE_OWNER,
-    "APP_URL": APP_URL,
-    "LOG_CHANNEL": LOG_CHANNEL,
-    "LOG_LEVEL": LOG_LEVEL,
-    "CACHE_DRIVER": CACHE_DRIVER,
-    "SESSION_DRIVER": SESSION_DRIVER,
-    "AUTHENTICATION_GUARD": AUTHENTICATION_GUARD,
-    "WEBAUTHN_NAME": WEBAUTHN_NAME,
-    "BROADCAST_DRIVER": BROADCAST_DRIVER,
-    "QUEUE_DRIVER": QUEUE_DRIVER,
-    "SESSION_LIFETIME": SESSION_LIFETIME,
-    "REDIS_HOST": REDIS_HOST,
-    "REDIS_PASSWORD": REDIS_PASSWORD,
-    "REDIS_PORT": REDIS_PORT,
-    "PUSHER_APP_ID": PUSHER_APP_ID,
-    "PUSHER_APP_KEY": PUSHER_APP_KEY,
-    "PUSHER_APP_SECRET": PUSHER_APP_SECRET,
-    "PUSHER_APP_CLUSTER": PUSHER_APP_CLUSTER,
-    "MIX_PUSHER_APP_KEY": MIX_PUSHER_APP_KEY,
-    "MIX_PUSHER_APP_CLUSTER": MIX_PUSHER_APP_CLUSTER,
-    "MIX_ENV": MIX_ENV,
-    "MAIL_MAILER": MAIL_MAILER,
-    "MAIL_HOST": MAIL_HOST,
-    "MAIL_PORT": MAIL_PORT,
-    "MAIL_USERNAME": MAIL_USERNAME,
-    "MAIL_PASSWORD": MAIL_PASSWORD,
-    "MAIL_FROM_NAME": MAIL_FROM_NAME,
-    "MAIL_FROM_ADDRESS": MAIL_FROM_ADDRESS,
-}
-# SSO Builds
-
-agent.write_envfile("app.env", app_config)
-# agent.dump_env()
+# Container environment
+environ = agent.read_envfile("environment")
+environ["TRAEFIK_HOST"] = data["host"]
+twofauth_conf.write_app_env(environ)

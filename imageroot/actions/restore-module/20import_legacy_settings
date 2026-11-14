@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# A backup made by a module release up to 2FAuth 8.0.3 carries the old
+# state/app.env: import the customized values it holds. state/key.env
+# (APP_KEY) comes back unchanged from the backup.
+#
+
+import os
+import sys
+
+import agent
+
+sys.path.insert(0, os.path.join(os.environ["AGENT_INSTALL_DIR"], "pypkg"))
+import twofauth_conf  # noqa: E402
+
+if os.path.exists("key.env"):
+    os.chmod("key.env", 0o600)
+
+if not os.path.exists(twofauth_conf.APP_ENV_FILE):
+    sys.exit(0)
+
+appenv = agent.read_envfile(twofauth_conf.APP_ENV_FILE)
+if twofauth_conf.is_legacy_app_env(appenv):
+    imports = twofauth_conf.legacy_env_entries(appenv, agent.read_envfile("environment"))
+    if imports:
+        print("Importing legacy 2FAuth settings: " + ", ".join(sorted(imports)), file=sys.stderr)
+        agent.mset_env(imports)

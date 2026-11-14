@@ -4,26 +4,28 @@
 # Copyright (C) 2023 Nethesis S.r.l.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-import os
+
+#
+# Generate the 2FAuth APP_KEY (database and session encryption key) and the
+# empty secrets file. Both are private to the module user (mode 0600) and
+# included in the backup. Never regenerate APP_KEY: the encrypted data
+# would be lost.
+#
+
+import base64
 import json
-import sys
-# agent is a NethServer library which provides function to communicate with the agent
-import agent
+import os
 import secrets
+import sys
 
 data = json.load(sys.stdin)
 
-# Setup default values
-random_key = secrets.token_hex(32)
-APP_KEY = data.get("APP_KEY",random_key)
+if not os.path.exists("key.env"):
+    app_key = data.get("APP_KEY") or "base64:" + base64.b64encode(secrets.token_bytes(32)).decode()
+    fd = os.open("key.env", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as fp:
+        fp.write("APP_KEY=" + app_key + "\n")
 
-# Talk with agent using file descriptor.
-
-app_key = {
-    "APP_KEY": APP_KEY
-}
-agent.write_envfile('key.env', app_key)
-
-# Make sure everything is saved inside the environment file
-# just before starting systemd unit
-agent.dump_env()
+if not os.path.exists("passwords.env"):
+    fd = os.open("passwords.env", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(fd)

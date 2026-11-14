@@ -5,12 +5,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
+#
+# The clone copies state/ (environment, key.env, passwords.env) and the
+# volumes: configure-module keeps every saved field absent from its input.
+# Let's Encrypt is never requested on clone: DNS may not point to this node
+# yet.
+#
+
 import agent
 import os
 
 configure_retval = agent.tasks.run(agent_id=os.environ['AGENT_ID'], action='configure-module', data={
-    "lets_encrypt": os.environ["TRAEFIK_LETS_ENCRYPT"] == "True",
+    "lets_encrypt": False,
     "host": os.environ["TRAEFIK_HOST"],
-    "http2https": os.environ["TRAEFIK_HTTP2HTTPS"] == "True",
+    "http2https": os.environ.get("TRAEFIK_HTTP2HTTPS", "True").lower() == "true",
 })
 agent.assert_exp(configure_retval['exit_code'] == 0, "The configure-module subtask failed!")

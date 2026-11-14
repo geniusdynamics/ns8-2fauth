@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (C) 2026 Nethesis S.r.l.
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+
+#
+# Apply the 2FAuth admin settings that live in its database (SSO only,
+# registration...). Only the values that changed since the module last
+# applied them are written, so a change made in the 2FAuth Admin panel
+# survives a save of unrelated fields.
+#
+
+import json
+import os
+import sys
+
+import agent
+
+sys.path.insert(0, os.path.join(os.environ["AGENT_INSTALL_DIR"], "pypkg"))
+import twofauth_conf  # noqa: E402
+
+data = json.load(sys.stdin)
+saved = twofauth_conf.read_saved_app_settings(os.environ)
+
+changes = {}
+for field in twofauth_conf.APP_SETTINGS:
+    if field in data and bool(data[field]) != saved[field]:
+        changes[field] = bool(data[field])
+
+if not changes:
+    sys.exit(0)
+
+print("Applying 2FAuth admin settings: " + json.dumps(changes), file=sys.stderr)
+result = twofauth_conf.apply_app_settings(changes)
+if result is None:
+    print(agent.SD_ERR + "2FAuth did not become ready: admin settings not applied", file=sys.stderr)
+    sys.exit(1)
+
+agent.mset_env({twofauth_conf.setting_env_name(f): twofauth_conf.to_env("bool", result[f]) for f in changes})
